@@ -7,17 +7,39 @@
 // Purpose of file: providews Lock/Unlock to GLPI items
 // ----------------------------------------------------------------------
 
+
+function initRunkit( $runkitDef ) {
+    foreach($runkitDef as $classname => $fcts) {
+        $tkt = new $classname; // to force autoload of class
+        // copy the original methods to backups
+        foreach( $fcts as $fctname ) {
+            $ret = runkit_method_copy( $classname, "pluginLock_".$fctname."_original", $classname, $fctname ) ;
+        }
+        // load new class definition
+        $ret = runkit_import( strtolower( "inc/runkit.$classname.class.php" ), RUNKIT_IMPORT_CLASSES | RUNKIT_IMPORT_OVERRIDE ) ;
+
+    }
+} 
+
 function plugin_init_lock() {
    global $PLUGIN_HOOKS;
 
    $PLUGIN_HOOKS['csrf_compliant']['lock'] = true;
 
-   Plugin::registerClass('PluginLockLock', array('classname' => 'PluginLockLock',));
+   Plugin::registerClass('PluginLockLock', array('classname' => 'PluginLockLock'));
 
-   $PLUGIN_HOOKS['pre_show_item']['lock'] = array('Ticket' => array('PluginLockLock', 'pre_show_item_lock'),
-      'Computer' => array('PluginLockLock', 'pre_show_item_lock'));
-   $PLUGIN_HOOKS['post_show_item']['lock'] = array('Ticket' => array('PluginLockLock', 'post_show_item_lock'),
-      'Computer' => array('PluginLockLock', 'post_show_item_lock'));
+   initRunkit(   array( 'Ticket' => array( 'showForm' ),
+                        'Computer' => array( 'showForm' ) ,
+                        'Reminder' => array( 'showForm' ) 
+                      ) 
+             ) ;
+
+
+   // old way of doing things :)
+   //$PLUGIN_HOOKS['pre_show_item']['lock'] = array('Ticket' => array('PluginLockLock', 'pre_show_item_lock'),
+   //   'Computer' => array('PluginLockLock', 'pre_show_item_lock'));
+   //$PLUGIN_HOOKS['post_show_item']['lock'] = array('Ticket' => array('PluginLockLock', 'post_show_item_lock'),
+   //   'Computer' => array('PluginLockLock', 'post_show_item_lock'));
 
    $PLUGIN_HOOKS['post_init']['lock'] = 'plugin_lock_postinit';
 }
@@ -26,7 +48,7 @@ function plugin_init_lock() {
 function plugin_version_lock() {
    return array(
       'name' => "Lock",
-      'version' => "2.0",
+      'version' => "3.0",
       'license' => "GPLv2+",
       'author' => "Olivier Moron",
       'minGlpiVersion' => "0.83+"
@@ -39,6 +61,10 @@ function plugin_lock_check_prerequisites() {
       echo "This plugin requires GLPI >= 0.83";
       return false;
    }
+   if (!extension_loaded('runkit')) { // Your configuration check
+       echo "PHP 'runkit' module is needed to run 'lock' plugin, please add it to your php config.";
+       return false;
+   }
    return true;
 }
 
@@ -47,12 +73,14 @@ function plugin_lock_check_prerequisites() {
 function plugin_lock_check_config($verbose = false) {
    global $LANG;
 
-   if (true) { // Your configuration check
+   if (extension_loaded('runkit')) { // Your configuration check
       return true;
-   }
+   } 
+
    if ($verbose) {
-      echo $LANG['plugins'][2];
+      echo "PHP 'runkit' module is needed to run 'lock' plugin, please add it to your php config.";
    }
+
    return false;
 }
 

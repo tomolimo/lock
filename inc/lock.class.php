@@ -91,8 +91,9 @@ class PluginLockLock extends CommonDBTM {
       global $DB, $CFG_GLPI, $LANG;
       //echo ("pre_show_item_lock: ".$item->getID()) ;
 
-      if ($_SESSION['glpiactiveprofile']['interface'] == 'helpdesk' || $item->getID() < 0)
-         return; // when in post-only profile or when in creation mode, then there is no locking mechanism.
+      if ($_SESSION['glpiactiveprofile']['interface'] == 'helpdesk' || $item->getID() < 0) {
+          return; // when in post-only profile or when in creation mode, then there is no locking mechanism.
+      }
 
       if (isset($_REQUEST['glpi_tab'])) {
          // in this case we just do a verification to know if we authorize write
@@ -105,7 +106,7 @@ class PluginLockLock extends CommonDBTM {
             $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
             $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
          }
-      } elseif ($item->getID() && in_array($item->getType(), array('Ticket', 'Computer'))) {
+      } elseif ($item->getID() && in_array($item->getType(), array('Ticket', 'Computer', 'Reminder'))) {
          // tries to lock item
          $ret = $DB->query("
             SELECT *
@@ -186,7 +187,11 @@ class PluginLockLock extends CommonDBTM {
                   echo "</div></div></div>";
                   echo "</div>";
 
-                  die("");
+                  //die("");
+                  // changes profile to prevent write to item
+                  $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
+                  $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
+
                }
             }
          } else {
@@ -199,7 +204,6 @@ class PluginLockLock extends CommonDBTM {
 			  					//alert(oReq.responseText);
 							}
 						window.onbeforeunload = closeIt;
-                        window.onunload = closeIt;
 						</script>");
          }
       }

@@ -1,18 +1,18 @@
 <?php
 // here we are going to try to unlock the given object
 // url should be of the form: 'http://.../.../unlock.php?item=ticket_xxxxxx'
-// which means that object type is ticket and id of the objet is xxxxxx
+// which means that object type is ticket and id of the object is xxxxxx
 // OR url should be of the form: 'http://.../.../unlock.php?id=yyyyyy'
 // which means that lock id is yyyyyy
 
-/**
- *  Database class for Mysql
- **/
-class DBmysql {
-   // fake class to permit to load db config
-}
+// to fake query function
+$_SESSION['glpi_use_mode'] = 0;
+$CFG_GLPI["debug_sql"] = 0 ;
 
-include('../../config/config_db.php');
+define('GLPI_ROOT', "../..");
+include(GLPI_ROOT . '/inc/dbmysql.class.php');
+include(GLPI_ROOT . '/inc/session.class.php');
+include(GLPI_ROOT . '/config/config_db.php');
 
 if (isset($_GET["item"]) || isset($_GET["id"])) {
    // then we may have something to unlock
@@ -45,23 +45,18 @@ if (isset($_GET["item"]) || isset($_GET["id"])) {
    //gets DB connection
    $unlockDB = new DB;
 
-   $link = mysql_connect($unlockDB->dbhost, $unlockDB->dbuser, $unlockDB->dbpassword);
-
-   if ($link) {
-      mysql_select_db($unlockDB->dbdefault);
-
+   if($unlockDB){ 
       if (isset($_GET["item"]))
          $query = "DELETE FROM `glpi_plugin_lock_locks` WHERE `itemtype` = '" . ucfirst($Object[0]) . "' AND `items_id` = '" . $Object[1] . "';";
       else
          $query = "DELETE FROM `glpi_plugin_lock_locks` WHERE `id` = '" . $Object . "';";
 
       //		echo $query."\n" ;
+      $result = $unlockDB->query($query);
 
-      $result = mysql_query($query, $link);
+      echo "unlocked row: " . ($result?'true':'false') . "\n";  
 
-      echo "unlocked row: " . mysql_affected_rows($link) . "\n";
-
-      mysql_close($link);
+      $unlockDB->close();
    } else
       echo("Can't connect to DB\n");
 
