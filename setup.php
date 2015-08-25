@@ -4,19 +4,27 @@
 
 // ----------------------------------------------------------------------
 // Original Author of file: Olivier Moron
-// Purpose of file: providews Lock/Unlock to GLPI items
+// Purpose of file: provides Lock/Unlock to GLPI items
 // ----------------------------------------------------------------------
 
 
 function initRunkit( $runkitDef ) {
     foreach($runkitDef as $classname => $fcts) {
-        $tkt = new $classname; // to force autoload of class
+        // not needed as method_exists is doing the autoload // $tkt = new $classname; // to force autoload of class
+        // copy phase
         // copy the original methods to backups
+        $ret = false ;
         foreach( $fcts as $fctname ) {
-            $ret = runkit_method_copy( $classname, "pluginLock_".$fctname."_original", $classname, $fctname ) ;
+            $ret = method_exists( $classname, "pluginLock_".$fctname."_original" ) ;
+            if( !$ret ) // method doesn't exist must copy it
+                $ret = runkit_method_copy( $classname, "pluginLock_".$fctname."_original", $classname, $fctname ) ;
+            if( !$ret ) // either can't copy method either an error occured during copy
+                break ;
         }
-        // load new class definition
-        $ret = runkit_import( strtolower( "inc/runkit.$classname.class.php" ), RUNKIT_IMPORT_CLASSES | RUNKIT_IMPORT_OVERRIDE ) ;
+        // load new class definition only ther is no error at copy phase
+        if( $ret ) {
+            $ret = runkit_import( strtolower( "inc/runkit.$classname.class.php" ), RUNKIT_IMPORT_CLASSES | RUNKIT_IMPORT_OVERRIDE ) ;
+        }
 
     }
 } 
@@ -48,7 +56,7 @@ function plugin_init_lock() {
 function plugin_version_lock() {
    return array(
       'name' => "Lock",
-      'version' => "3.0",
+      'version' => "3.0.1",
       'license' => "GPLv2+",
       'author' => "Olivier Moron",
       'minGlpiVersion' => "0.83+"
@@ -73,7 +81,7 @@ function plugin_lock_check_prerequisites() {
 function plugin_lock_check_config($verbose = false) {
    global $LANG;
 
-   if (extension_loaded('runkit')) { // Your configuration check
+   if (extension_loaded('runkit')) { // configuration check
       return true;
    } 
 

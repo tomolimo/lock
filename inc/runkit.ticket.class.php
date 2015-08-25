@@ -15,7 +15,7 @@ class Ticket {
      * @param mixed $options 
      * @return mixed
      */
-    function showForm( $ID, $options ){
+    function showForm( $ID, $options=array() ){
         if( $this->getFromDB($ID) && $this->can($ID,'w') ) {
             PluginLockLock::pre_show_item_lock( $this ) ;
         }

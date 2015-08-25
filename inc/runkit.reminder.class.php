@@ -15,7 +15,7 @@ class Reminder {
      * @param mixed $options 
      * @return mixed
      */
-    function showForm( $ID ){
+    function showForm( $ID, $options = array() ){
         if( $this->getFromDB($ID) && $this->can($ID,'w') ) {
             PluginLockLock::pre_show_item_lock( $this ) ;
         }
