@@ -92,7 +92,7 @@ function plugin_lock_uninstall() {
 function plugin_lock_postinit() {
    global $DB;
 
-   if (!isset($_SESSION['glpi_plugin_lock_read_only_profile'])) {
+   if (isset($_SESSION['glpiname']) && !isset($_SESSION['glpi_plugin_lock_read_only_profile'])) {
       //   		echo("plugin_lock_postinit");
       $query = "SELECT * FROM glpi_plugin_lock_config";
       $ret = $DB->query($query);
