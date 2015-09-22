@@ -34,7 +34,7 @@ function plugin_init_lock() {
 function plugin_version_lock() {
    return array(
       'name' => "Lock",
-      'version' => "3.1.0",
+      'version' => "3.2.0",
       'license' => "GPLv2+",
       'author' => "Olivier Moron",
       'minGlpiVersion' => "0.83+"
@@ -43,8 +43,8 @@ function plugin_version_lock() {
 
 // Optional : check prerequisites before install : may print errors or add to message after redirect
 function plugin_lock_check_prerequisites() {
-   if (version_compare(GLPI_VERSION, '0.83', 'lt')) {
-      echo "This plugin requires GLPI >= 0.83";
+   if (version_compare(GLPI_VERSION, '0.83', '<') || version_compare(GLPI_VERSION, '0.90', '>=') ) {
+      echo "This plugin requires GLPI >= 0.83 and GLPI < 0.90";
       return false;
    }
    $plug = new Plugin ;

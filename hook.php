@@ -19,27 +19,27 @@ function plugin_lock_install() {
 		`items_id` INT(11) NOT NULL DEFAULT '0' COMMENT 'RELATION to various table, according to itemtype (ID)',
 		`itemtype` VARCHAR(100) NOT NULL COLLATE 'utf8_unicode_ci',
 		`users_id` INT(11) NOT NULL,
-		`lockdate` DATETIME NOT NULL,
+		`lockdate` TIMESTAMP NOT NULL,
 		PRIMARY KEY (`id`),
 		UNIQUE INDEX `item` (`itemtype`, `items_id`)
 		)
 		COLLATE='utf8_unicode_ci'
-		ENGINE=MyISAM;";
+		ENGINE=InnoDB;";
 
       $DB->query($query) or die("error creating glpi_plugin_lock_locks " . $DB->error());
 
    }
 
-   if (!TableExists("glpi_plugin_lock_config")) {
-      $query = "CREATE TABLE `glpi_plugin_lock_config` (
+   if(!TableExists("glpi_plugin_lock_configs")) {
+      $query = "CREATE TABLE `glpi_plugin_lock_configs` (
 		`id` INT(11) NOT NULL AUTO_INCREMENT,
 		`read_only_profile_id` INT(11) NOT NULL DEFAULT '0',
 		PRIMARY KEY (`id`)
 		)
 		COLLATE='utf8_unicode_ci'
-		ENGINE=MyISAM;";
+		ENGINE=InnoDB;";
 
-      $DB->query($query) or die("error creating glpi_plugin_lock_config " . $DB->error());
+      $DB->query($query) or die("error creating glpi_plugin_lock_configs " . $DB->error());
 
    }
 
@@ -48,18 +48,37 @@ function plugin_lock_install() {
    $query = "SELECT id FROM glpi_profiles WHERE name like 'Plugin Lock % Profile'";
    $result = $DB->query($query);
    if ($DB->numrows($result) == 0) {
-      $DB->query("
-         INSERT INTO `glpi_profiles` (`name`, `interface`, `is_default`, `computer`, `monitor`, `software`, `networking`, `printer`, `peripheral`, `cartridge`, `consumable`, `phone`, `notes`, `contact_enterprise`, `document`, `contract`, `infocom`, `knowbase`, `knowbase_admin`, `faq`, `reservation_helpdesk`, `reservation_central`, `reports`, `ocsng`, `view_ocsng`, `sync_ocsng`, `dropdown`, `entity_dropdown`, `device`, `typedoc`, `link`, `config`, `rule_ticket`, `entity_rule_ticket`, `rule_ocs`, `rule_ldap`, `rule_softwarecategories`, `search_config`, `search_config_global`, `check_update`, `profile`, `user`, `user_authtype`, `group`, `entity`, `transfer`, `logs`, `reminder_public`, `bookmark_public`, `backup`, `create_ticket`, `delete_ticket`, `add_followups`, `group_add_followups`, `global_add_followups`, `global_add_tasks`, `update_ticket`, `update_priority`, `own_ticket`, `steal_ticket`, `assign_ticket`, `show_all_ticket`, `show_assign_ticket`, `show_full_ticket`, `observe_ticket`, `update_followups`, `update_tasks`, `show_planning`, `show_group_planning`, `show_all_planning`, `statistic`, `password_update`, `helpdesk_hardware`, `helpdesk_item_type`, `ticket_status`, `show_group_ticket`, `show_group_hardware`, `rule_dictionnary_software`, `rule_dictionnary_dropdown`, `budget`, `import_externalauth_users`, `notification`, `rule_mailcollector`, `date_mod`, `comment`, `validate_ticket`, `create_validation`, `calendar`, `sla`, `rule_dictionnary_printer`, `clean_ocsng`, `update_own_followups`, `delete_followups`, `entity_helpdesk`, `show_my_problem`, `show_all_problem`, `edit_all_problem`, `problem_status`, `create_ticket_on_login`, `tickettemplate`, `ticketrecurrent`)
-         VALUES ('Plugin Lock Read-Only Profile','central',0,'r','r','r','r','r','r','r','r','r','r','r','r','r','r','r','0','r','0','r','r',NULL,'r',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'r','r',NULL,'0','0','0','0','0','0','0','0','0','0','0','1','1','1','1','0','0','0','0','0','1',NULL,0,'[]',NULL,'1','0',NULL,NULL,'r',NULL,NULL,NULL,'2013-04-16 17:26:27','This profile is used to manage Lock/unlock of items: do not use for something else!','0','0',NULL,NULL,NULL,'r','0','0',NULL,'0','0','0',NULL,0,NULL,NULL)
-      ") or die("error creating 'Plugin Lock Read-Only Profile' into 'glpi_profiles' table!" . $DB->error());
-      $profile_id = $DB->insert_id();
+       // profile is not existing must create an empty one that will be manually populated when needed
+       $prof = new Profile ;
+       $prof->add( array( 'name' => 'Plugin Lock Read-Only Profile',
+                          'interface' => 'central', 
+                          'is_default' => 0,
+                          'comment' => "This profile is used to manage Lock/unlock of items and to give access to the Unlock form: do not use it for something else!\nDo not forget to set rights for this profile otherwise nothing will be viewable!"
+                          )
+                  ) ;
+       $profile_id = $prof->getID() ; 
+       if( $profile_id  > -1 ) {
+           // will set profile rights
+           $profRights = new ProfileRight ;
+
+           $profRights->updateProfileRights( $profile_id, array( 'computer' => 1,
+                                                                'monitor' => 1,
+                                                                'ticket' => 1024,
+                                                                'task' => 8193,
+                                                                'ticketcost' => 1,
+                                                                'followup' => 8193
+
+                                                                )
+                                            ) ;
+       }
+
    } else {
       $row = $DB->fetch_assoc($result);
       $profile_id = $row['id'];
    }
 
-   $query = "REPLACE INTO `glpi_plugin_lock_config` (`id`, `read_only_profile_id`) VALUES (1, " . $profile_id . ")";
-   $DB->query($query) or die("error inserting 'Plugin Lock Read-Only Profile' id into 'glpi_plugin_lock_config' table!" . $DB->error());
+   $query = "REPLACE INTO `glpi_plugin_lock_configs` (`id`, `read_only_profile_id`) VALUES (1, " . $profile_id . ")";
+   $DB->query($query) or die("error inserting 'Plugin Lock Read-Only Profile' id into 'glpi_plugin_lock_configs' table!" . $DB->error());
 
 
    // To be called for each task the plugin manage
@@ -81,8 +100,12 @@ function plugin_lock_uninstall() {
       $DB->query($query) or die("error deleting glpi_plugin_lock_locks");
    }
    if (TableExists("glpi_plugin_lock_config")) {
-      $query = "DROP TABLE `glpi_plugin_lock_config`";
-      $DB->query($query) or die("error deleting glpi_plugin_lock_config");
+       $query = "DROP TABLE `glpi_plugin_lock_config`";
+       $DB->query($query) or die("error deleting glpi_plugin_lock_config");
+   }
+   if (TableExists("glpi_plugin_lock_configs")) {
+       $query = "DROP TABLE `glpi_plugin_lock_configs`";
+       $DB->query($query) or die("error deleting glpi_plugin_lock_configs");
    }
 
    return true;
@@ -94,7 +117,7 @@ function plugin_lock_postinit() {
 
    if (isset($_SESSION['glpiname']) && !isset($_SESSION['glpi_plugin_lock_read_only_profile'])) {
       //   		echo("plugin_lock_postinit");
-      $query = "SELECT * FROM glpi_plugin_lock_config";
+      $query = "SELECT * FROM glpi_plugin_lock_configs";
       $ret = $DB->query($query);
       if ($ret && $DB->numrows($ret) == 1) {
          $row = $DB->fetch_assoc($ret);

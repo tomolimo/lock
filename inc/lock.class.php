@@ -77,7 +77,24 @@ class PluginLockLock extends CommonDBTM {
 
    }
 
+   static function displayLockMessage( $item, $row ) {
+       global $CFG_GLPI;
+                  echo "<div class='box' style='margin-bottom:20px;'>";
+                  echo "<div class='box-tleft'><div class='box-tright'><div class='box-tcenter'>";
+                  echo "</div></div></div>";
+                  echo "<div class='box-mleft'><div class='box-mright'><div class='box-mcenter'>";
+                  echo "<h3><span class='red'>" . $item->getType() . " has been locked by '" . $row['name'] . "' since '" . $row['lockdate'] . "'!</span></h3>";
+                  echo "<h3><span class='red'>To request unlock, click -> <a href=\"mailto:" . $row['email'] . "?subject=Please unlock item: " . $item->getType() . " " . $item->getID() . "&body=Hello,%0A%0ACould you go to this item and unlock it for me?%0A%0A" . $CFG_GLPI['url_base'] . "/?redirect=" . $item->getType() . "_" . $item->getID() . "%0A%0AThank you,%0A%0ARegards,%0A%0A" . $_SESSION['glpifirstname'] . "\">" . $row['name'] . "</a></span></h3>";
+                  echo "</div></div></div>";
+                  echo "<div class='box-bleft'><div class='box-bright'><div class='box-bcenter'>";
+                  echo "</div></div></div>";
+                  echo "</div>";
 
+                  // changes profile to prevent write to item
+                  $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
+                  $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
+	}
+   
    /**
     * sets a lock on $item
     * when in post-only profile or when in creation mode, there is no lock
@@ -95,16 +112,24 @@ class PluginLockLock extends CommonDBTM {
           return; // when in post-only profile or when in creation mode, then there is no locking mechanism.
       }
 
-      if (isset($_REQUEST['glpi_tab'])) {
+      if ((isset($_REQUEST['_glpi_tab']) && $_REQUEST['_glpi_tab'] != $item->getType().'$main')
+          || isset($_REQUEST['glpi_tab']) ) {
          // in this case we just do a verification to know if we authorize write
          // we check if linked item is locked or not and we prevent write only if locking user <> from current user
          //echo "Linked Item type=".$item->getType()." Items_id=".$item->getID() ;
-         $query = "SELECT * FROM `glpi_plugin_lock_locks` WHERE `items_id` = " . $item->getID() . " AND `itemtype` = '" . $item->getType() . "' AND `users_id` <> " . Session::getLoginUserID();
+         $query = "SELECT glpi_plugin_lock_locks.*, glpi_users.name, glpi_useremails.email 
+					FROM `glpi_plugin_lock_locks` 
+                     left join glpi_users on glpi_users.id = glpi_plugin_lock_locks.users_id
+                     left join glpi_useremails on (glpi_users.id = glpi_useremails.users_id and glpi_useremails.is_default = 1)
+					WHERE glpi_plugin_lock_locks.`items_id` = " . $item->getID() . " AND glpi_plugin_lock_locks.`itemtype` = '" . $item->getType() . "' AND glpi_plugin_lock_locks.`users_id` <> " . Session::getLoginUserID();
          $ret = $DB->query($query);
          if ($ret && $DB->numrows($ret) == 1) {
-            // changes profile to prevent write to item
-            $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
-            $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
+			$row = $DB->fetch_assoc($ret);
+			if( ! isset($_REQUEST['glpi_tab']) ) 
+                self::displayLockMessage( $item, $row ) ;
+            // // changes profile to prevent write to item
+            // $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
+            // $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
          }
       } elseif ($item->getID() && in_array($item->getType(), array('Ticket', 'Computer', 'Reminder'))) {
          // tries to lock item
@@ -144,21 +169,21 @@ class PluginLockLock extends CommonDBTM {
                // alerts user that the item is locked
                //   	  		displayLockMessage("<h3><span class='red'>".$item->getType()." has been locked by '".$row['name']."' since '".$row['lockdate']."'!</span></h3>") ;
                if (Session::getLoginUserID() <> $row['users_id']) {
+					self::displayLockMessage( $item, $row ) ;
+                  // echo "<div class='box' style='margin-bottom:20px;'>";
+                  // echo "<div class='box-tleft'><div class='box-tright'><div class='box-tcenter'>";
+                  // echo "</div></div></div>";
+                  // echo "<div class='box-mleft'><div class='box-mright'><div class='box-mcenter'>";
+                  // echo "<h3><span class='red'>" . $item->getType() . " has been locked by '" . $row['name'] . "' since '" . $row['lockdate'] . "'!</span></h3>";
+                  // echo "<h3><span class='red'>To request unlock, click -> <a href=\"mailto:" . $row['email'] . "?subject=Please unlock item: " . $item->getType() . " " . $item->getID() . "&body=Hello,%0A%0ACould you go to this item and unlock it for me?%0A%0A" . $CFG_GLPI['url_base'] . "/?redirect=" . $item->getType() . "_" . $item->getID() . "%0A%0AThank you,%0A%0ARegards,%0A%0A" . $_SESSION['glpifirstname'] . "\">" . $row['name'] . "</a></span></h3>";
+                  // echo "</div></div></div>";
+                  // echo "<div class='box-bleft'><div class='box-bright'><div class='box-bcenter'>";
+                  // echo "</div></div></div>";
+                  // echo "</div>";
 
-                  echo "<div class='box' style='margin-bottom:20px;'>";
-                  echo "<div class='box-tleft'><div class='box-tright'><div class='box-tcenter'>";
-                  echo "</div></div></div>";
-                  echo "<div class='box-mleft'><div class='box-mright'><div class='box-mcenter'>";
-                  echo "<h3><span class='red'>" . $item->getType() . " has been locked by '" . $row['name'] . "' since '" . $row['lockdate'] . "'!</span></h3>";
-                  echo "<h3><span class='red'>To request unlock, click -> <a href=\"mailto:" . $row['email'] . "?subject=Please unlock item: " . $item->getType() . " " . $item->getID() . "&body=Hello,%0A%0ACould you go to this item and unlock it for me?%0A%0A" . $CFG_GLPI['url_base'] . "/?redirect=" . $item->getType() . "_" . $item->getID() . "%0A%0AThank you,%0A%0ARegards,%0A%0A" . $_SESSION['glpifirstname'] . "\">" . $row['name'] . "</a></span></h3>";
-                  echo "</div></div></div>";
-                  echo "<div class='box-bleft'><div class='box-bright'><div class='box-bcenter'>";
-                  echo "</div></div></div>";
-                  echo "</div>";
-
-                  // changes profile to prevent write to item
-                  $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
-                  $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
+                  // // changes profile to prevent write to item
+                  // $_SESSION['glpi_plugin_lock_former_profile'] = $_SESSION['glpiactiveprofile'];
+                  // $_SESSION['glpiactiveprofile'] = $_SESSION['glpi_plugin_lock_read_only_profile'];
                } else {
                   echo("<script type='text/javascript'>
 									function UnlockIt(item, type, num){
@@ -222,5 +247,3 @@ class PluginLockLock extends CommonDBTM {
    }
 
 }
-
-?>
