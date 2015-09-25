@@ -62,7 +62,7 @@ function plugin_lock_check_config($verbose = false) {
    global $LANG;
 
    $plug = new Plugin ;
-   if ($plug->isActivated('mhooks')) { // Your configuration check
+   if ($plug->isActivated('mhooks') && version_compare( $plug->fields['version'], '1.1.0', '>=')) { // Your configuration check
        return true;
    } 
 
