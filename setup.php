@@ -34,7 +34,7 @@ function plugin_init_lock() {
 function plugin_version_lock() {
    return array(
       'name' => "Lock",
-      'version' => "3.1.0",
+      'version' => "3.1.1",
       'license' => "GPLv2+",
       'author' => "Olivier Moron",
       'minGlpiVersion' => "0.83+"
@@ -48,10 +48,11 @@ function plugin_lock_check_prerequisites() {
       return false;
    }
    $plug = new Plugin ;
-   if (!$plug->isActivated('mhooks')) { // Your configuration check
-       echo "'mhooks' plugin is needed to run 'lock' plugin, please add it to your GLPI plugin configuration.";
+   if (!$plug->isActivated('mhooks') || version_compare( $plug->fields['version'], '1.1.0', '<') ) { 
+       echo "'mhooks 1.1.0' plugin is needed to run 'lock' plugin, please add it to your GLPI plugin configuration.";
        return false;
-   }
+   } 
+
    return true;
 }
 
