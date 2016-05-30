@@ -8,7 +8,7 @@
          <en>Provides a lock mechanism to GLPI items like Ticket, Computer and Reminder.</en>
       </short>
       <long>
-         <en>Provides a lock mechanism to GLPI items like Ticket, Computer and Reminder.</en>		 
+         <en>Provides a lock mechanism to GLPI items like Ticket, Computer and Reminder. Please note that this plugin has been integrated into GLPi core since release 9.1, and such this plugin will not be maintained any longuer.</en>		 
       </long>
    </description>
    <homepage>https://github.com/tomolimo/lock</homepage>
